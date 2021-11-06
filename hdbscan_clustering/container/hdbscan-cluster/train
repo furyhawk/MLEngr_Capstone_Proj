@@ -1,0 +1,106 @@
+#!/usr/bin/env python
+
+# A sample training component that trains a simple scikit-learn decision tree model.
+# This implementation works in File mode and makes no assumptions about the input file names.
+# Input is specified as CSV with a data point in each row and the labels in the first column.
+
+from __future__ import print_function
+
+import json
+import os
+import pickle
+import sys
+import traceback
+
+import pandas as pd
+# from sklearn import tree
+import sys
+sys.path.append('../')
+import hdbscan
+from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
+from loglizer import dataloader, preprocessing
+
+
+# These are the paths to where SageMaker mounts interesting things in your container.
+prefix = '/opt/ml/'
+input_path = prefix + 'input/data'
+output_path = os.path.join(prefix, 'output')
+model_path = os.path.join(prefix, 'model')
+param_path = os.path.join(prefix, 'input/config/hyperparameters.json')
+
+# This algorithm has a single channel of input data called 'training'. Since we run in
+# File mode, the input files are copied to the directory specified here.
+channel_name='training'
+training_path = os.path.join(input_path, channel_name)
+
+feature_path = os.path.join(training_path, 'HDFS_100k.log_structured.csv')
+label_path = os.path.join(training_path, 'anomaly_label.csv')
+
+
+# The function to execute the training.
+def train():
+    print('Starting the training.')
+    try:
+        struct_log = feature_path # The structured log file
+        label_file = label_path # The anomaly label file
+        max_dist = 0.3 # the threshold to stop the clustering process
+        anomaly_threshold = 0.3 # the threshold for anomaly detection
+
+
+        (x_train, y_train), (x_test, y_test) = dataloader.load_HDFS(feature_path,
+                                                            label_file=label_path,
+                                                            window='session', 
+                                                            train_ratio=0.7,
+                                                            split_type='uniform')
+
+
+        feature_extractor = preprocessing.FeatureExtractor()
+        x_train_transformed = feature_extractor.fit_transform(x_train, term_weighting='tf-idf')
+        x_test_transformed = feature_extractor.transform(x_test)
+
+        # clf = LogClustering(max_dist=max_dist, anomaly_threshold=anomaly_threshold)
+        # clf.fit(x_train_transformed[y_train == 0, :]) # Use only normal samples for training
+
+
+        # print('Train validation:')
+        # precision, recall, f1 = clf.evaluate(x_train_transformed, y_train)
+
+        # print('Test validation:')
+        # precision, recall, f1 = clf.evaluate(x_test_transformed, y_test)
+
+        # Cluster the features
+        clf = hdbscan.HDBSCAN( min_samples=10, min_cluster_size= 40, cluster_selection_method= 'eom', metric= 'euclidean',prediction_data=True)
+        cluster_labels = clf.fit_predict(x_train_transformed)
+
+        test_scores = hdbscan.approximate_predict_scores(clf, x_test_transformed)
+        test_scores_df = pd.DataFrame( test_scores )
+        test_scores_df = test_scores_df[0].apply( lambda x: 1 if x>0 else 0 )   # 0 refers to first column
+
+        precision, recall, f1, _ = precision_recall_fscore_support(y_test , test_scores_df, average='binary')
+
+        print(pd.crosstab(y_test, test_scores_df, rownames=['actual (row)'], colnames=['prediction (col)']))
+        print("\n{:<11} {:.3f}".format('Recall:', recall))
+        print("{:<11} {:.3f}".format('Precision:', precision))
+        print("{:<11} {:.3f}".format('F1-measure:', f1))
+
+
+        # save the model
+        with open(os.path.join(model_path, 'hdbscan-cluster-model.pkl'), 'wb') as out:
+            pickle.dump(clf, out)
+        print('Training complete.')
+    except Exception as e:
+        # Write out an error file. This will be returned as the failureReason in the
+        # DescribeTrainingJob result.
+        trc = traceback.format_exc()
+        with open(os.path.join(output_path, 'failure'), 'w') as s:
+            s.write('Exception during training: ' + str(e) + '\n' + trc)
+        # Printing this causes the exception to be in the training job logs, as well.
+        print('Exception during training: ' + str(e) + '\n' + trc, file=sys.stderr)
+        # A non-zero exit code causes the training job to be marked as Failed.
+        sys.exit(255)
+
+if __name__ == '__main__':
+    train()
+
+    # A zero exit code causes the job to be marked a Succeeded.
+    sys.exit(0)
