@@ -29,3 +29,7 @@ For notebooks 1-3, the following additional libraries required to be installed:
 For notebook 4, there is no further installation required.
 
 For notebook 5 and 6, there is no further installation required as containers are used. Required libraries is defined in Dockerfile and installed during container build.
+
+## Documentation
+[Project Report](Project_Report.pdf)\
+References to supporting material for the project are stated in footnotes at relevant sections of project report.
