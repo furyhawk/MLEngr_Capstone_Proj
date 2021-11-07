@@ -34,3 +34,5 @@ For notebook 5 and 6, there is no further installation required as containers ar
 ## Documentation
 [Project Report](Project_Report.pdf)\
 References to supporting material for the project are stated in footnotes at relevant sections of project report.
+
+[Submission Notes](student_submission_notes/)
