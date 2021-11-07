@@ -13,7 +13,7 @@ There is one notebook that shows data exploration, and two notebooks that shows 
 3. hdbscan_tuning.ipnyb
 
 There are three main notebooks that shows the ML models being implemented in this project:
-1. linearLearner.ipynb (in folder *linear_learner*)
+1. [linearLearner.ipynb](linearLearner.ipynb)
 2. clustering_agglomerative.ipynb (in folder *agglomerative_clustering*)
 3. clustering_hdbscan.ipynb (in folder *hdbscan_clustering*)
 
