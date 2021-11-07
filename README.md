@@ -23,7 +23,7 @@ All notebooks are run in AWS Sagemaker environment.
 Most of the required libraries already exist in AWS Sagemaker environment.
 To run the Jupyter notebooks (1-6) in AWS Sagemaker environment, use kernel conda_pytorch_p36
 
-For notebooks A1, A2 and A3, the following additional libraries required to be installed:
+For notebooks A1, A2 and A3, the following additional libraries are required to be installed:
 - loglizer==1.0
 - hdbscan==0.8.27
 
